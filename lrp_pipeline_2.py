@@ -94,8 +94,10 @@ def get_LRP_heatmap(image, L, layers, imgclasses, intermediate_path):
     for i in ind[:2]:
         print("%20s (%3d): %6.3f" % (imgclasses[i], i, scores[i]))
 
+    pred_idx = int(ind[0])  # predicted class index
+
     T = torch.FloatTensor(
-        (1.0 * (np.arange(2) == ind[0]).reshape([1, 2, 1, 1]))
+        (1.0 * (np.arange(2) == pred_idx).reshape([1, 2, 1, 1]))
     )  # SET FOR THE HIGHEST SCORE CLASS
     R = [None] * L + [(A[-1] * T).data]
     for l in range(1, L)[::-1]:
@@ -139,7 +141,7 @@ def get_LRP_heatmap(image, L, layers, imgclasses, intermediate_path):
     heatmap(
         np.array(R[0][0].cpu()).sum(axis=0), 2, 2, intermediate_path
     )  # HEATMAPPING TO SEE LRP MAPS WITH NEW RULE
-    return R[0][0].cpu()
+    return R[0][0].cpu(), pred_idx
 
 
 def get_nucleus_mask_for_graphcut(R):
@@ -360,7 +362,7 @@ def lrp_main(pixel_conversion):
         image = cv2.resize(image, (128, 128))
 
         layers_copy = copy.deepcopy(layers)
-        R = get_LRP_heatmap(image, L, layers_copy, imgclasses, intermediate_path)
+        R, pred_idx = get_LRP_heatmap(image, L, layers_copy, imgclasses, intermediate_path)
 
         rel_grouping = get_nucleus_mask_for_graphcut(R)
 
@@ -401,6 +403,9 @@ def lrp_main(pixel_conversion):
             return_dict[f"table{return_dict_count}"] = str(
                 base64.b64encode(open(table_path, "rb").read()).decode("utf-8")
             )
+            # include class label for frontend
+            return_dict[f"class{return_dict_count}"] = imgclasses.get(pred_idx, str(pred_idx))
+
             return_dict_count += 1
 
         i += 1

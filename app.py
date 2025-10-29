@@ -83,11 +83,15 @@ def submit_form():
         heatmap_image = base64.b64encode(open(output_paths["heatmap"], "rb").read()).decode("utf-8")
         mask_image = base64.b64encode(open(output_paths["mask"], "rb").read()).decode("utf-8")
         table_image = base64.b64encode(open(output_paths["table"], "rb").read()).decode("utf-8")
+
+        # include predicted class from the pipeline result
+        predicted_class = result_dict.get("class1")
         
         return jsonify({
             "success": True,
             "summary": f"GradCAM++ analysis completed with magnification {data['magval']}",
             "details": "Nucleus and cytoplasm segmented successfully",
+            "classification": predicted_class,
             "results": {
                 "originalImage": original_image,
                 "heatmapImage": heatmap_image,

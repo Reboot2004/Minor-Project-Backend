@@ -29,6 +29,9 @@ saved_model_path = 'xception_model_81.h5'  # Replace with the path to your saved
 
 model = load_model(saved_model_path)
 
+# add mapping from model output index to human-readable class
+imgclasses = {0: "abnormal", 1: "normal"}
+
 
 def preprocess_image(img_path):
     img = image.load_img(img_path, target_size=(224, 224))
@@ -353,6 +356,7 @@ def cam_main(pixel_conversion):
 
     pred_class = model.predict(preprocess_image(image_path))
     pred_class = pred_class.argmax(axis=1)[0]
+    class_name = imgclasses.get(pred_class, str(pred_class))
 
     # print(pred_class)
 
@@ -416,6 +420,9 @@ def cam_main(pixel_conversion):
         return_dict[f"table{return_dict_count}"] = str(
             base64.b64encode(open(table_path, "rb").read()).decode("utf-8")
         )
+        # add predicted class so frontend can show it
+        return_dict[f"class{return_dict_count}"] = class_name
+
         return_dict_count += 1
 
     count+=1
@@ -470,6 +477,7 @@ def cam_process_single_image(image_path: str, pixel_conversion: float):
 
   # Predict class to choose segmentation strategy
   pred_class = model.predict(preprocess_image(image_path)).argmax(axis=1)[0]
+  class_name = imgclasses.get(pred_class, str(pred_class))
   if pred_class == 0:
     labels, colored_segmentation_mask = GMM_abnormal_method(heatmap)
   else:
@@ -515,12 +523,13 @@ def cam_process_single_image(image_path: str, pixel_conversion: float):
     writer = csv.writer(csv_file)
     writer.writerows(cell_descriptors)
 
-  # Build return dict with base64-encoded artifacts
+  # Build return dict with base64-encoded artifacts and class label
   return_dict = {
       "image1": str(base64.b64encode(open(image_path, "rb").read()).decode("utf-8")),
       "inter1": str(base64.b64encode(open(intermediate_path, "rb").read()).decode("utf-8")),
       "mask1": str(base64.b64encode(open(save_path, "rb").read()).decode("utf-8")),
       "table1": str(base64.b64encode(open(table_path, "rb").read()).decode("utf-8")),
+      "class1": class_name
   }
 
   output_paths = {"heatmap": intermediate_path, "mask": save_path, "table": table_path}
